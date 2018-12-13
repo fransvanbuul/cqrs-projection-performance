@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import java.security.SecureRandom
 import java.util.*
+import kotlin.concurrent.thread
 import kotlin.math.roundToInt
 
 @Component
@@ -28,9 +29,8 @@ class Loader(
 
     private fun runAsync() {
         val threads: Array<Thread?> = arrayOfNulls(threadCount)
-        for(i in 0 until threads.size) threads[i] = Thread { singleThread() }
+        for(i in 0 until threads.size) threads[i] = thread { singleThread() }
         val start = System.currentTimeMillis()
-        for(i in 0 until threads.size) threads[i]?.start()
         for(i in 0 until threads.size) threads[i]?.join()
         val end = System.currentTimeMillis()
         val events = threadCount * eventsPerThread

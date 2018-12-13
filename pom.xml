@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.example.cqrs</groupId>
-    <artifactId>projection-naive</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <artifactId>projection-benchmark</artifactId>
+    <version>1.0</version>
     <name>projection-naive</name>
-    <description>Naive approach to running projections</description>
+    <description>Tests of projection throughput (AxonServer to MongoDB) with various configurations.</description>
 
     <properties>
         <java.version>1.8</java.version>
@@ -20,12 +20,18 @@
         <axon.version>4.0.3</axon.version>
         <axon-mongo.version>4.0</axon-mongo.version>
         <kotlin-logging.version>1.6.22</kotlin-logging.version>
+        <metrics.version>4.0.3</metrics.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>

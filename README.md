@@ -1,2 +1,1 @@
-# cqrs-projection-performance
-Some experiments with optimizing CQRS projection performance
+docker run -it --rm --name mongo -p 27017:27017 mongo:4.0
