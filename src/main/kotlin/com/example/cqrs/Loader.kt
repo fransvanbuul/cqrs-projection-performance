@@ -1,5 +1,6 @@
 package com.example.cqrs
 
+import com.codahale.metrics.MetricRegistry
 import mu.KLogging
 import org.axonframework.eventhandling.EventBus
 import org.axonframework.eventhandling.GenericEventMessage
@@ -7,6 +8,8 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.CommandLineRunner
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.security.SecureRandom
 import java.util.*
 import kotlin.concurrent.thread
@@ -16,29 +19,19 @@ import kotlin.math.roundToInt
 @Profile("loader")
 class Loader(
         val eventBus: EventBus,
-        @Value("\${cqrs.loader.events-per-thread}") val eventsPerThread: Int,
-        @Value("\${cqrs.loader.thread-count}") val threadCount: Int,
-        @Value("\${cqrs.loader.ids-per-thread}") val idsPerThread: Int
+        @Value("\${loader.events-per-thread}") val eventsPerThread: Int,
+        @Value("\${loader.thread-count}") val threadCount: Int,
+        @Value("\${loader.ids-per-thread}") val idsPerThread: Int,
+        metricRegistry: MetricRegistry
 ): CommandLineRunner {
 
     companion object : KLogging()
 
+    private val meter = metricRegistry.meter("loader")
+
     override fun run(vararg args: String?) {
-        Thread { runAsync() }.start()
+        List(threadCount) { thread { singleThread() } }.forEach { it.join() }
     }
-
-    private fun runAsync() {
-        val threads: Array<Thread?> = arrayOfNulls(threadCount)
-        for(i in 0 until threads.size) threads[i] = thread { singleThread() }
-        val start = System.currentTimeMillis()
-        for(i in 0 until threads.size) threads[i]?.join()
-        val end = System.currentTimeMillis()
-        val events = threadCount * eventsPerThread
-        val delta = end - start
-        val rate = (1000f * events.toFloat() / delta.toFloat()).roundToInt()
-        logger.debug { "$events events in $delta ms = $rate EPS" }
-    }
-
 
     private fun singleThread() {
         val ids: Array<UUID?> = arrayOfNulls(idsPerThread)
@@ -46,6 +39,7 @@ class Loader(
         for(i in 0 until eventsPerThread) {
             val event = randomEvent(ids, rng)
             eventBus.publish(GenericEventMessage.asEventMessage<Any>(event))
+            meter.mark()
         }
     }
 
@@ -53,17 +47,20 @@ class Loader(
         val index = rng.nextInt(ids.size)
         val id = ids[index]
         if(id == null) {
-            val id = UUID.randomUUID()
-            ids[index] = id
-            return CreatedEvent(id)
+            val newId = UUID.randomUUID()
+            ids[index] = newId
+            return AccountCreated(newId )
         } else {
             val dice = rng.nextFloat()
-            if(dice < 0.8f) {
-                val amount = rng.nextInt(200) - 100;
-                return ChangedEvent(id, amount)
+            if(dice < 0.5f) {
+                val amount = BigDecimal(rng.nextDouble()*100).setScale(2, RoundingMode.HALF_UP)
+                return AccountCredited(id, amount)
+            } else if(dice < 0.8f) {
+                val amount = BigDecimal(rng.nextDouble()*100).setScale(2, RoundingMode.HALF_UP)
+                return AccountDebited(id, amount)
             } else {
                 ids[index] = null
-                return DeletedEvent(id)
+                return AccountCancelled(id)
             }
         }
     }
